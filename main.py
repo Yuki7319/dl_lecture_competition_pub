@@ -8,6 +8,10 @@ from omegaconf import DictConfig
 import wandb
 from termcolor import cprint
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import torchvision
+import torchvision.transforms as transforms
+
 
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
@@ -26,7 +30,6 @@ def run(args: DictConfig):
     #    Dataloader
     # ------------------
     loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
-    
     train_set = ThingsMEGDataset("train", args.data_dir)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
     val_set = ThingsMEGDataset("val", args.data_dir)
@@ -51,6 +54,7 @@ def run(args: DictConfig):
     # ------------------
     #   Start training
     # ------------------  
+    l2_lambda = 1e-3 
     max_val_acc = 0
     accuracy = Accuracy(
         task="multiclass", num_classes=train_set.num_classes, top_k=10
@@ -68,6 +72,11 @@ def run(args: DictConfig):
             y_pred = model(X)
             
             loss = F.cross_entropy(y_pred, y)
+            l2 = torch.tensor(0., requires_grad=True).to(args.device)
+            for param in model.parameters():
+                l2 = l2 + torch.norm(param, 2)
+            
+            loss = loss + l2_lambda * l2
             train_loss.append(loss.item())
             
             optimizer.zero_grad()
@@ -112,8 +121,7 @@ def run(args: DictConfig):
     np.save(os.path.join(logdir, "submission"), preds)
     cprint(f"Submission {preds.shape} saved at {logdir}", "cyan")
 
-
 if __name__ == "__main__":
     run()
 
-print('hello')
+

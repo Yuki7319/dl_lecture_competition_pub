@@ -16,13 +16,13 @@ class BasicConvClassifier(nn.Module):
 
         self.blocks = nn.Sequential(
             ConvBlock(in_channels, hid_dim),
-            ConvBlock(hid_dim, hid_dim),
+            ConvBlock(hid_dim, 4*hid_dim),
         )
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool1d(1),
             Rearrange("b d 1 -> b d"),
-            nn.Linear(hid_dim, num_classes),
+            nn.Linear(4*hid_dim, num_classes),
         )
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
@@ -36,14 +36,13 @@ class BasicConvClassifier(nn.Module):
 
         return self.head(X)
 
-
 class ConvBlock(nn.Module):
     def __init__(
         self,
         in_dim,
         out_dim,
         kernel_size: int = 3,
-        p_drop: float = 0.1,
+        p_drop: float = 0.4,
     ) -> None:
         super().__init__()
         
@@ -69,7 +68,12 @@ class ConvBlock(nn.Module):
 
         X = self.conv1(X) + X  # skip connection
         X = F.gelu(self.batchnorm1(X))
-
+        """
+        X = self.conv1(X) + X  # skip connection
+        X = self.dropout(X)
+        
+        X = F.gelu(self.batchnorm1(X))
+        """
         # X = self.conv2(X)
         # X = F.glu(X, dim=-2)
 
